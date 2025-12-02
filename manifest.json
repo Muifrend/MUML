@@ -4,5 +4,16 @@
   "version": "1.0.0",
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+  "permissions": [],
+   "content_scripts": [
+    {
+      "js": [
+        "src/content-scripts.ts"
+      ],
+      "matches": [
+        "https://forum.minerva.edu/app/courses/*/sections/*/classes/*"
+      ]
+    }
+  ]
 }

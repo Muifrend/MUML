@@ -1,32 +1,55 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import { ErrorMessage } from './components/ErrorMessage.tsx';
+import { LinkList } from './components/LinkList.tsx';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [links, setLinks] = useState<{title: string, url: string}[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleScrape = async () => {
+    setErrorMessage(null);
+    setLinks([]);
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (tab.id) {
+      chrome.tabs.sendMessage(tab.id, { action: "GET_READINGS" }, (response) => {
+        if (chrome.runtime.lastError) {
+          setErrorMessage("Could not connect. Reload the page.");
+          return;
+        }
+
+        if (response?.links?.length > 0) {
+          setLinks(response.links);
+        } else {
+          setErrorMessage("No readings found.");
+        }
+      });
+    } else {
+      setErrorMessage("No active tab found.");
+    }
+  };
 
   return (
-    <>
-      <main className="w-[400px] p-6 pt-10 flex flex-col items-center bg-[#242424] text-[rgba(255,255,255,0.87)] font-sans rounded-xl shadow-2xl border border-gray-700">
-        
-        {/* Title */}
-        <h1 className="text-4xl font-bold mb-8 text-center">Copy Forum Links Straigth to NotebookLM</h1>
-        
-        {/* Interactive Section */}
-        <div className="w-full bg-[#1a1a1a] p-6 rounded-lg text-center">
-          <button 
-            onClick={() => setCount((count) => count + 1)}
-            className="rounded-lg border border-transparent px-4 py-2 text-lg font-medium bg-[#2a2a2a] cursor-pointer transition-colors hover:border-[#646cff] hover:bg-[#3a3a3a] mb-4"
-          >
-            count is {count}
-          </button>
-          
-          <p className="text-sm text-gray-400">
-            Edit <code className="font-mono bg-[#2f2f2f] px-1 rounded text-white">src/App.tsx</code> and save to test HMR
-          </p>
-        </div>
-      </main>
+    <div className="w-[400px] p-6 bg-gray-800 text-white min-h-[300px] flex flex-col items-center">
 
-    </>
-  )
+      <h1 className="text-2xl font-bold mb-6">Minerva Scraper</h1>
+
+      {/* Component 1: Handles the error UI */}
+      <ErrorMessage message={errorMessage} />
+      
+      <button 
+        onClick={handleScrape}
+        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition mb-6"
+      >
+        Get Readings
+      </button>
+
+      {/* Component 2: Handles the list UI */}
+      <LinkList links={links} />
+      
+    </div>
+  );
 }
 
-export default App
+export default App;
