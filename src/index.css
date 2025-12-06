@@ -4,3 +4,18 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased; /* Makes font look sharper on Chrome */
 }
+
+/* Hide scrollbars for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1E1F20; 
+}
+::-webkit-scrollbar-thumb {
+  background: #353638; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #505153; 
+}
