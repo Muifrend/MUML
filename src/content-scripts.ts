@@ -1,10 +1,9 @@
 function getPageData() {
   // --- PART 1: Get the Session Title ---
-  // Based on your screenshot, the title is inside an <h1> within a <section class="lines">
   const titleElement = document.querySelector('section.lines h1 a');
   const sessionTitle = titleElement?.textContent?.trim() || "Unknown Session";
 
-  // --- PART 2: Get the Readings (Existing Logic) ---
+  // --- PART 2: Get the Readings ---
   const allHeaders = Array.from(document.querySelectorAll('h3'));
   const readingsHeader = allHeaders.find(h => h.textContent?.trim() === "Readings");
 
@@ -25,17 +24,22 @@ function getPageData() {
     }
   }
 
-  // --- PART 3: Return Both ---
+  // --- PART 3: Create the "allUrls" String ---
+  // We join them with a newline (\n) so they are ready for NotebookLM
+  const allUrls = readingLinks.map(link => link.url).join('\n');
+
+  // --- PART 4: Return Everything ---
   return {
     sessionTitle: sessionTitle,
-    links: readingLinks
+    links: readingLinks,
+    allUrls: allUrls // <--- This is the new field
   };
 }
 
-// Update the listener to send the full object
+// (The listener remains the same)
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === "GET_READINGS") {
     const data = getPageData();
-    sendResponse({ data: data }); // Note: We are sending { data: ... } now
+    sendResponse({ data: data });
   }
 });

@@ -5,15 +5,17 @@ import { LinkList } from "./components/LinkList";
 function App() {
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
+  const [allUrls, setAllUrls] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 2. LOAD DATA on Startup
   useEffect(() => {
-    chrome.storage.local.get(["sessionTitle", "links"], (result) => {
+    chrome.storage.local.get(["sessionTitle", "links", "allUrls"], (result) => {
       // FIX: Tell TypeScript exactly what this 'result' object contains
       const data = result as {
         sessionTitle?: string;
         links?: { title: string; url: string }[];
+        allUrls?: string;
       };
 
       if (data.sessionTitle) {
@@ -22,6 +24,10 @@ function App() {
 
       if (data.links) {
         setLinks(data.links);
+      }
+
+      if (data.allUrls) {
+        setAllUrls(data.allUrls);
       }
     });
   }, []);
@@ -48,16 +54,19 @@ function App() {
           if (response && response.data) {
             const newTitle = response.data.sessionTitle;
             const newLinks = response.data.links;
+            const newAllUrls = response.data.allUrls;
 
             // Update State
             setSessionTitle(newTitle);
             setLinks(newLinks);
+            setAllUrls(newAllUrls);
 
             // 3. SAVE DATA to Storage
             chrome.storage.local.set(
               {
                 sessionTitle: newTitle,
                 links: newLinks,
+                allUrls: newAllUrls,
               },
               () => {
                 console.log("Data saved to Chrome storage");
@@ -81,6 +90,7 @@ function App() {
   const handleClear = () => {
     chrome.storage.local.clear(() => {
       setSessionTitle(null);
+      setAllUrls(null);
       setLinks([]);
       setErrorMessage(null);
     });
@@ -112,7 +122,7 @@ function App() {
         )}
       </div>
 
-      <LinkList sessionTitle={sessionTitle} links={links} />
+      <LinkList sessionTitle={sessionTitle} allUrls={allUrls} links={links} />
     </div>
   );
 }

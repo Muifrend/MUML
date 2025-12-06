@@ -8,6 +8,7 @@ interface Link {
 interface LinkListProps {
   sessionTitle: string | null;
   links: Link[];
+  allUrls?: string | null;
 }
 
 // Helper: Categorize the URL
@@ -38,7 +39,7 @@ function getCategory(url: string) {
   return { name: 'Web', color: 'bg-blue-500/20 text-blue-200 border-blue-500/50' };
 }
 
-export function LinkList({ sessionTitle, links }: LinkListProps) {
+export function LinkList({ sessionTitle, links, allUrls }: LinkListProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   if (links.length === 0 && !sessionTitle) return null;
@@ -108,6 +109,11 @@ export function LinkList({ sessionTitle, links }: LinkListProps) {
           );
         })}
       </div>
+      {allUrls && (
+        <pre className="mt-4 p-2 bg-gray-900 text-xs rounded max-h-40 overflow-auto whitespace-pre-wrap break-words">
+          {allUrls}
+        </pre>
+      )}
     </div>
   );
 }

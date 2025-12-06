@@ -5,19 +5,17 @@
   "action": {
     "default_popup": "popup.html"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
-   "content_scripts": [
+  "permissions": ["storage", "activeTab", "scripting"],
+  "content_scripts": [
     {
-      "js": [
-        "src/content-scripts.ts"
-      ],
+      "js": ["src/content-scripts.ts"],
       "matches": [
         "https://forum.minerva.edu/app/courses/*/sections/*/classes/*"
       ]
+    },
+    {
+      "matches": ["https://notebooklm.google.com/notebook/*"],
+      "js": ["src/notebooklm.ts"]
     }
   ]
 }
