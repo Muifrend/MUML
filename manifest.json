@@ -5,7 +5,11 @@
   "action": {
     "default_popup": "popup.html"
   },
-  "permissions": [],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
    "content_scripts": [
     {
       "js": [
