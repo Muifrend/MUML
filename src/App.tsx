@@ -3,6 +3,7 @@ import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { LinkList } from './components/LinkList.tsx';
 
 function App() {
+  const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const [links, setLinks] = useState<{title: string, url: string}[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -19,10 +20,16 @@ function App() {
           return;
         }
 
-        if (response?.links?.length > 0) {
-          setLinks(response.links);
+        // Handle the new response structure { data: { sessionTitle, links } }
+        if (response && response.data) {
+          setSessionTitle(response.data.sessionTitle);
+          setLinks(response.data.links);
+          
+          if (response.data.links.length === 0) {
+            setErrorMessage("Found the session, but no readings.");
+          }
         } else {
-          setErrorMessage("No readings found.");
+          setErrorMessage("No data found.");
         }
       });
     } else {
@@ -46,7 +53,7 @@ function App() {
       </button>
 
       {/* Component 2: Handles the list UI */}
-      <LinkList links={links} />
+      <LinkList sessionTitle={sessionTitle} links={links} />
       
     </div>
   );
