@@ -98,7 +98,7 @@ function App() {
 
   return (
     <div className="w-[450px] p-6 bg-gray-800 text-white h-auto max-h-[600px] flex flex-col items-center overflow-hidden">
-      <h1 className="text-2xl font-bold mb-6">Minerva Scraper</h1>
+      <h1 className="text-2xl font-bold mb-6">Minerva LM</h1>
 
       <ErrorMessage message={errorMessage} />
 
