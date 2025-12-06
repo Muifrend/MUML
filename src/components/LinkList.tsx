@@ -40,25 +40,19 @@ function getCategory(url: string) {
 }
 
 export function LinkList({ sessionTitle, links, allUrls }: LinkListProps) {
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isAllCopied, setIsAllCopied] = useState(false);
 
   if (links.length === 0 && !sessionTitle) return null;
 
-  const handleClick = (url: string, index: number) => {
-    const category = getCategory(url);
-
-    // 1. If it's an Upload/PDF, open it in a new tab immediately
-    if (category.name === 'Upload' || category.name === 'Library') {
-      window.open(url, '_blank');
-      return; // Stop here, do not copy
-    }
-
-    // 2. Otherwise, Copy to Clipboard
-    navigator.clipboard.writeText(url);
-    setCopiedIndex(index);
+  const handleCopyAll = () => {
+    if (!allUrls) return;
+    
+    navigator.clipboard.writeText(allUrls);
+    setIsAllCopied(true);
+    
     setTimeout(() => {
-      setCopiedIndex(null);
-    }, 1500);
+      setIsAllCopied(false);
+    }, 2000);
   };
 
   return (
@@ -74,45 +68,59 @@ export function LinkList({ sessionTitle, links, allUrls }: LinkListProps) {
         Found {links.length} Readings
       </p>
       
+      {/* Scrollable Link List */}
       <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
         {links.map((link, index) => {
           const category = getCategory(link.url);
-          const isCopied = copiedIndex === index;
 
           return (
-            <button 
+            <a 
               key={index} 
-              onClick={() => handleClick(link.url, index)}
-              className="w-full text-left group flex items-start gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 transition-all border-l-4 border-transparent hover:border-blue-500 active:scale-[0.98]" // (keep your existing classes)
-              
-              // UPDATE TOOLTIP: Check for Library here too
-              title={(category.name === 'Upload' || category.name === 'Library') ? "Click to Open" : "Click to Copy URL"}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full text-left group flex items-start gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 transition-all border-l-4 border-transparent hover:border-blue-500 active:scale-[0.98] decoration-0"
+              title="Open in new tab"
             >
-              {isCopied ? (
-                 <span className="shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-emerald-500 text-white border-emerald-400 animate-in fade-in zoom-in duration-200">
-                   COPIED!
-                 </span>
-              ) : (
-                <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${category.color}`}>
-                  {category.name}
-                </span>
-              )}
+              <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${category.color}`}>
+                {category.name}
+              </span>
 
-              <span className={`text-sm line-clamp-2 leading-snug group-hover:text-white ${isCopied ? 'text-emerald-300' : 'text-gray-200'}`}>
+              <span className="text-sm line-clamp-2 leading-snug text-gray-200 group-hover:text-white">
                 {link.title}
               </span>
               
-              {(category.name === 'Upload' || category.name === 'Library') && (
-                <span className="ml-auto text-gray-500 group-hover:text-gray-300">↗</span>
-              )}
-            </button>
+              <span className="ml-auto text-gray-500 group-hover:text-gray-300">↗</span>
+            </a>
           );
         })}
       </div>
+
+      {/* Separator and Copy Button Section */}
       {allUrls && (
-        <pre className="mt-4 p-2 bg-gray-900 text-xs rounded max-h-40 overflow-auto whitespace-pre-wrap break-words">
-          {allUrls}
-        </pre>
+        <>
+          <div className="w-full h-px bg-gray-600/50 my-1" /> {/* The Divider */}
+          
+          <button
+            onClick={handleCopyAll}
+            className={`w-full py-2 px-3 rounded text-xs font-bold uppercase tracking-wide transition-all duration-200 border flex items-center justify-center gap-2
+              ${isAllCopied 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' 
+                : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'
+              }`}
+          >
+            {isAllCopied ? (
+              <>
+                <span>✓ Copied to Clipboard</span>
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>Copy Sources for NotebookLM</span>
+              </>
+            )}
+          </button>
+        </>
       )}
     </div>
   );
