@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface Link {
   title: string;
   url: string;
@@ -8,61 +10,59 @@ interface LinkListProps {
   links: Link[];
 }
 
-// 1. Helper function to categorize links based on URL
+// Helper: Categorize the URL
 function getCategory(url: string) {
   const lowerUrl = url.toLowerCase();
 
-  // --- YOUTUBE ---
-  if (lowerUrl.includes("youtube.com") || lowerUrl.includes("youtu.be")) {
-    return {
-      name: "YouTube",
-      color: "bg-red-500/20 text-red-200 border-red-500/50",
-    };
+  if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
+    return { name: 'YouTube', color: 'bg-red-500/20 text-red-200 border-red-500/50' };
   }
-
-  // --- MINERVA LIBRARY RESOURCES ---
-  // Covers: EBSCO, JSTOR, ScienceDirect, Oxford Handbooks/Art/Press
+  
   if (
-    lowerUrl.includes("ebscohost") ||
-    lowerUrl.includes("jstor") ||
-    lowerUrl.includes("proquest") ||
-    lowerUrl.includes("sciencedirect") ||
-    lowerUrl.includes("oxford") ||
-    lowerUrl.includes("groveart") ||
-    lowerUrl.includes("sagepub") || // Common academic publisher
-    lowerUrl.includes("tandfonline") // Taylor & Francis
+    lowerUrl.includes('ebscohost') || 
+    lowerUrl.includes('jstor') || 
+    lowerUrl.includes('proquest') || 
+    lowerUrl.includes('sciencedirect') || 
+    lowerUrl.includes('oxford') || 
+    lowerUrl.includes('groveart') ||
+    lowerUrl.includes('sagepub') || 
+    lowerUrl.includes('tandfonline')
   ) {
-    return {
-      name: "MU Library",
-      color: "bg-green-500/20 text-green-200 border-green-500/50",
-    };
+    return { name: 'Library', color: 'bg-green-500/20 text-green-200 border-green-500/50' };
   }
 
-  // --- UPLOADS / FILES ---
-  // Matches PDFs or Minerva "uploaded_files" paths
-  if (
-    lowerUrl.endsWith(".pdf") ||
-    lowerUrl.includes("uploaded_files") ||
-    lowerUrl.includes("drive.google")
-  ) {
-    return {
-      name: "Upload",
-      color: "bg-orange-500/20 text-orange-200 border-orange-500/50",
-    };
+  if (lowerUrl.endsWith('.pdf') || lowerUrl.includes('uploaded_files') || lowerUrl.includes('drive.google')) {
+    return { name: 'Upload', color: 'bg-orange-500/20 text-orange-200 border-orange-500/50' };
   }
 
-  // --- DEFAULT ---
-  return {
-    name: "Web",
-    color: "bg-blue-500/20 text-blue-200 border-blue-500/50",
-  };
+  return { name: 'Web', color: 'bg-blue-500/20 text-blue-200 border-blue-500/50' };
 }
 
 export function LinkList({ sessionTitle, links }: LinkListProps) {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
   if (links.length === 0 && !sessionTitle) return null;
+
+  const handleClick = (url: string, index: number) => {
+    const category = getCategory(url);
+
+    // 1. If it's an Upload/PDF, open it in a new tab immediately
+    if (category.name === 'Upload' || category.name === 'Library') {
+      window.open(url, '_blank');
+      return; // Stop here, do not copy
+    }
+
+    // 2. Otherwise, Copy to Clipboard
+    navigator.clipboard.writeText(url);
+    setCopiedIndex(index);
+    setTimeout(() => {
+      setCopiedIndex(null);
+    }, 1500);
+  };
 
   return (
     <div className="w-full flex flex-col gap-2 overflow-hidden">
+      
       {sessionTitle && (
         <h2 className="text-md font-bold text-blue-300 border-b border-gray-600 pb-2 mb-2 leading-snug break-words">
           {sessionTitle}
@@ -72,33 +72,39 @@ export function LinkList({ sessionTitle, links }: LinkListProps) {
       <p className="text-gray-400 text-xs uppercase font-bold tracking-wider mb-2">
         Found {links.length} Readings
       </p>
-
+      
       <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
         {links.map((link, index) => {
-          // 2. Determine category for this specific link
           const category = getCategory(link.url);
+          const isCopied = copiedIndex === index;
 
           return (
-            <a
-              key={index}
-              href={link.url}
-              target="_blank"
-              // Changed layout to 'flex' to align Badge and Title side-by-side
-              className="group flex items-start gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 transition-colors border-l-4 border-transparent hover:border-blue-500"
-              title={link.title}
+            <button 
+              key={index} 
+              onClick={() => handleClick(link.url, index)}
+              className="w-full text-left group flex items-start gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 transition-all border-l-4 border-transparent hover:border-blue-500 active:scale-[0.98]" // (keep your existing classes)
+              
+              // UPDATE TOOLTIP: Check for Library here too
+              title={(category.name === 'Upload' || category.name === 'Library') ? "Click to Open" : "Click to Copy URL"}
             >
-              {/* 3. The Category Badge */}
-              <span
-                className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${category.color}`}
-              >
-                {category.name}
-              </span>
+              {isCopied ? (
+                 <span className="shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-emerald-500 text-white border-emerald-400 animate-in fade-in zoom-in duration-200">
+                   COPIED!
+                 </span>
+              ) : (
+                <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${category.color}`}>
+                  {category.name}
+                </span>
+              )}
 
-              {/* Title */}
-              <span className="text-sm text-gray-200 line-clamp-2 leading-snug group-hover:text-white">
+              <span className={`text-sm line-clamp-2 leading-snug group-hover:text-white ${isCopied ? 'text-emerald-300' : 'text-gray-200'}`}>
                 {link.title}
               </span>
-            </a>
+              
+              {(category.name === 'Upload' || category.name === 'Library') && (
+                <span className="ml-auto text-gray-500 group-hover:text-gray-300">↗</span>
+              )}
+            </button>
           );
         })}
       </div>
