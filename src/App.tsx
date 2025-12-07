@@ -25,10 +25,23 @@ function App() {
 
   const handleScrape = async () => {
     setErrorMessage(null);
+    
     const [tab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     });
+
+    // 1. VALIDATION CHECK: Ensure we are on the correct URL
+    if (tab.url) {
+      // Regex pattern: matches forum.minerva.edu followed by the specific path structure
+      // [^/]+ acts as the wildcard (*) for the IDs
+      const isClassPage = /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(tab.url);
+
+      if (!isClassPage) {
+        setErrorMessage("You are not on a class page.");
+        return; // Stop here, do not try to scrape
+      }
+    }
 
     if (tab.id) {
       chrome.tabs.sendMessage(
