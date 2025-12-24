@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { LinkList } from "./components/LinkList";
+import { Button } from "./components/Button";
 
 function App() {
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
@@ -25,7 +26,7 @@ function App() {
 
   const handleScrape = async () => {
     setErrorMessage(null);
-    
+
     const [tab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
@@ -35,7 +36,10 @@ function App() {
     if (tab.url) {
       // Regex pattern: matches forum.minerva.edu followed by the specific path structure
       // [^/]+ acts as the wildcard (*) for the IDs
-      const isClassPage = /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(tab.url);
+      const isClassPage =
+        /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(
+          tab.url
+        );
 
       if (!isClassPage) {
         setErrorMessage("You are not on a class page.");
@@ -89,6 +93,13 @@ function App() {
       setErrorMessage(null);
     });
   };
+  const [isAllCopied, setIsAllCopied] = useState(false);
+  const handleCopyAll = () => {
+    if (!allUrls) return;
+    navigator.clipboard.writeText(allUrls);
+    setIsAllCopied(true);
+    setTimeout(() => setIsAllCopied(false), 2000);
+  };
 
   return (
     // UPDATED: Main background color #1E1F20 and text #E3E3E3
@@ -126,36 +137,76 @@ function App() {
 
       {/* Main Action Button */}
       <div className="w-full mb-4">
-        <button
+        <Button
           onClick={handleScrape}
-          // MATCHING EXACTLY:
-          // 1. 'shadow-md' (was shadow-sm)
-          // 2. 'text-sm' (was missing/default)
-          // 3. 'px-4' (was px-6)
-          // 4. 'duration-200' added for same animation feel
-          className="w-full bg-[#A8C7FA] hover:bg-[#8AB4F8] text-[#062E6F] font-medium py-3 px-4 rounded-full transition-all duration-200 shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+          icon={
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" x2="12" y1="15" y2="3" />
+            </svg>
+          }
         >
-          {/* Icon resized to 16 to match the Copy button icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" x2="12" y1="15" y2="3" />
-          </svg>
           Get Readings
-        </button>
+        </Button>
       </div>
 
-      <LinkList sessionTitle={sessionTitle} allUrls={allUrls} links={links} />
+      <LinkList sessionTitle={sessionTitle} links={links} />
+
+      {allUrls && (
+        <div className="mt-2 pt-2 border-t border-zinc-800">
+          <Button
+            onClick={handleCopyAll}
+            variant={isAllCopied ? "success" : "primary"}
+            icon={
+              isAllCopied ? (
+                // Success Icon (Checkmark)
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              ) : (
+                // Copy Icon
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              )
+            }
+          >
+            {isAllCopied ? "Copied!" : "Copy Sources for NotebookLM"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
