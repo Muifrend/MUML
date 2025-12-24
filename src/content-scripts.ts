@@ -25,72 +25,81 @@ function getReadings() {
   }
 
   // --- PART 3: Create the "allUrls" String ---
-  // We join them with a newline (\n) so they are ready for NotebookLM
   const allUrls = readingLinks.map(link => link.url).join('\n');
 
   // --- PART 4: Return Everything ---
   return {
     sessionTitle: sessionTitle,
     links: readingLinks,
-    allUrls: allUrls // <--- This is the new field
+    allUrls: allUrls
   };
 }
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  
-  // CHECK: Only let the Main Forum respond to "getReadings"
-  if (request.action === "GET_READINGS" && window.location.hostname === "forum.minerva.edu") {
-    console.log("Minerva LM: Fetching links from Main Forum...");
-    
-    // Your existing link-getting logic goes here
-    const data = getReadings();
-    
-    // Send the data back to the popup
-    sendResponse({  data: data });
-    return true; // Keep channel open if async
-  }
-  
-  // If we are in the Iframe, we ignore "GET_LINKS" so we don't interfere
-});
-
 const extractWorkbookContent = () => {
-  // 1. Select ALL editors inside the blocks, not just the first one
+  // 1. Select ALL editors inside the blocks
   const selector = 'div[data-cy="block"] .ql-editor';
   const editorElements = document.querySelectorAll(selector);
 
   if (editorElements.length > 0) {
-    // 2. Map over the elements to get their text and join them with newlines
+    // 2. Map over the elements to get their text and join them
     const fullText = Array.from(editorElements)
-      .map(element => element.textContent?.trim()) // Extract and clean text
-      .filter(text => text && text.length > 0)     // Remove empty blocks
-      .join('\n\n----------------\n\n');           // Separator between blocks
+      .map(element => element.textContent?.trim())
+      .filter(text => text && text.length > 0)
+      .join('\n\n----------------\n\n');
 
-    console.log("Found Workbook Content (All Blocks):", fullText);
+    console.log("Minerva LM: Workbook Scrape Triggered. Length:", fullText.length);
     
-    // 3. Save to chrome.storage
-    chrome.storage.local.set({ workbookContent: fullText }, () => {
-        console.log("Minerva LM: Workbook content saved successfully!");
-        console.log(fullText); // Verify what was saved in the console
-      });
+    // 3. Save to chrome.storage (This triggers the UI update in your Popup)
+    chrome.storage.local.set({ workbookContent: fullText });
+  } else {
+    console.log("Minerva LM: No workbook content found yet.");
   }
 };
 
-// Only run this logic if we are actually inside the collaboration iframe
+
+// ==================================================
+// LOGIC: MAIN FORUM PAGE
+// ==================================================
+if (window.location.hostname === "forum.minerva.edu") {
+  
+  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    // Respond to the "Get Readings" button
+    if (request.action === "GET_READINGS") {
+      console.log("Minerva LM: Fetching links from Main Forum...");
+      const data = getReadings();
+      sendResponse({ success: true, data: data });
+    }
+    // Note: We do NOT return true here because getReadings is synchronous
+  });
+}
+
+
+// ==================================================
+// LOGIC: IFRAME (WORKBOOK)
+// ==================================================
 if (window.location.hostname === "sle-collaboration.minervaproject.com") {
-  console.log("Minerva LM: Injected into Collaboration Iframe");
+  
+  console.log("Minerva LM: Iframe Script Active");
 
-  // 1. Try immediately in case it's already there
-  extractWorkbookContent();
+  // 1. LISTEN FOR THE BUTTON CLICK (The "On Press" Requirement)
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.action === "GET_READINGS") {
+      // When user clicks "Get Readings", we ALSO scrape the workbook
+      console.log("Minerva LM: Iframe received sync trigger...");
+      extractWorkbookContent();
+      
+      // IMPORTANT: We do NOT call sendResponse() here. 
+      // The Main Forum script handles the response. 
+      // We just save to storage, and the popup's storage listener handles the rest.
+    }
+  });
 
-  // 2. Set up a MutationObserver to watch for when the content loads (React hydration)
+  // 2. AUTOMATIC OBSERVER (Backup: catches content as it loads)
+  extractWorkbookContent(); // Run once immediately
+  
   const observer = new MutationObserver(() => {
-    // We check if the element exists now
     extractWorkbookContent();
   });
 
-  // Start observing the document body for changes
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-} 
+  observer.observe(document.body, { childList: true, subtree: true });
+}

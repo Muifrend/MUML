@@ -8,20 +8,62 @@ function App() {
   const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
   const [allUrls, setAllUrls] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [workbookContent, setWorkbookContent] = useState<string | null>(null);
 
-  // LOAD DATA on Startup
+  // Button State toggles
+  const [isAllCopied, setIsAllCopied] = useState(false);
+  const [isWorkbookCopied, setIsWorkbookCopied] = useState(false);
+
+  // LOAD DATA & START LISTENING
   useEffect(() => {
-    chrome.storage.local.get(["sessionTitle", "links", "allUrls"], (result) => {
-      const data = result as {
-        sessionTitle?: string;
-        links?: { title: string; url: string }[];
-        allUrls?: string;
+    // 1. Initial Fetch (Get data if it's already there)
+    chrome.storage.local.get(
+      ["sessionTitle", "links", "allUrls", "workbookContent"],
+      (result) => {
+        const data = result as {
+          sessionTitle?: string;
+          links?: { title: string; url: string }[];
+          allUrls?: string;
+          workbookContent?: string;
+        };
+
+        if (data.sessionTitle) setSessionTitle(data.sessionTitle);
+        if (data.links) setLinks(data.links);
+        if (data.allUrls) setAllUrls(data.allUrls);
+        if (data.workbookContent && data.workbookContent.length > 0)
+          setWorkbookContent(data.workbookContent);
+      }
+    );
+
+    // 2. LIVE LISTENER (Crucial Fix: Updates UI when data arrives)
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      
+      // Helper: reducing repetition for the 3 string fields
+      const updateString = (key: string, setter: (val: string | null) => void) => {
+        if (changes[key]) {
+          const val = changes[key].newValue;
+          setter(typeof val === "string" ? val : null);
+        }
       };
 
-      if (data.sessionTitle) setSessionTitle(data.sessionTitle);
-      if (data.links) setLinks(data.links);
-      if (data.allUrls) setAllUrls(data.allUrls);
-    });
+      // Apply updates
+      updateString("workbookContent", setWorkbookContent);
+      updateString("allUrls", setAllUrls);
+      updateString("sessionTitle", setSessionTitle);
+
+      // Handle Links separately (using our clean type guard)
+      if (changes.links) {
+        const val = changes.links.newValue;
+        setLinks(isValidLinkArray(val) ? val : []);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    // Cleanup
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
   }, []);
 
   const handleScrape = async () => {
@@ -32,10 +74,8 @@ function App() {
       currentWindow: true,
     });
 
-    // 1. VALIDATION CHECK: Ensure we are on the correct URL
+    // 1. VALIDATION CHECK
     if (tab.url) {
-      // Regex pattern: matches forum.minerva.edu followed by the specific path structure
-      // [^/]+ acts as the wildcard (*) for the IDs
       const isClassPage =
         /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(
           tab.url
@@ -43,7 +83,7 @@ function App() {
 
       if (!isClassPage) {
         setErrorMessage("You are not on a class page.");
-        return; // Stop here, do not try to scrape
+        return;
       }
     }
 
@@ -91,9 +131,10 @@ function App() {
       setAllUrls(null);
       setLinks([]);
       setErrorMessage(null);
+      setWorkbookContent(null);
     });
   };
-  const [isAllCopied, setIsAllCopied] = useState(false);
+
   const handleCopyAll = () => {
     if (!allUrls) return;
     navigator.clipboard.writeText(allUrls);
@@ -101,14 +142,22 @@ function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
+  const handleCopyWorkbook = () => {
+    if (workbookContent) {
+      navigator.clipboard.writeText(workbookContent).then(() => {
+        setIsWorkbookCopied(true);
+        setTimeout(() => setIsWorkbookCopied(false), 2000);
+      });
+    }
+  };
+
   return (
-    // UPDATED: Main background color #1E1F20 and text #E3E3E3
-    <div className=" p-5 bg-[#22262b] w-[320px] max-h-[600px] text-[#E3E3E3]  flex flex-col font-sans overflow-hidden">
+    <div className="p-5 bg-[#22262b] w-[320px] max-h-[600px] text-[#E3E3E3] flex flex-col font-sans overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-medium tracking-tight">MinervaLM</h1>
 
-        {/* Clear Button (Icon only style) */}
+        {/* Clear Button */}
         {(links.length > 0 || sessionTitle) && (
           <button
             onClick={handleClear}
@@ -163,52 +212,118 @@ function App() {
 
       <LinkList sessionTitle={sessionTitle} links={links} />
 
+      {/* RESULTS SECTION */}
       {allUrls && (
-        <div className="mt-2 pt-2 border-t border-zinc-800">
-          <Button
-            onClick={handleCopyAll}
-            variant={isAllCopied ? "success" : "primary"}
-            icon={
-              isAllCopied ? (
-                // Success Icon (Checkmark)
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              ) : (
-                // Copy Icon
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              )
-            }
-          >
-            {isAllCopied ? "Copied!" : "Copy Sources for NotebookLM"}
-          </Button>
+        <div className="mt-2 pt-2 border-t border-zinc-700">
+          <div className="w-full">
+            <Button
+              onClick={handleCopyAll}
+              variant={isAllCopied ? "success" : "primary"}
+              icon={
+                isAllCopied ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                )
+              }
+            >
+              {isAllCopied ? "Copied!" : "Copy Sources for NotebookLM"}
+            </Button>
+          </div>
+          {workbookContent && (
+            <div className="w-full mb-3 mt-2">
+              <Button
+                onClick={handleCopyWorkbook}
+                variant={isWorkbookCopied ? "success" : "primary"}
+                icon={
+                  isWorkbookCopied ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" x2="8" y1="13" y2="13" />
+                      <line x1="16" x2="8" y1="17" y2="17" />
+                      <line x1="10" x2="8" y1="9" y2="9" />
+                    </svg>
+                  )
+                }
+              >
+                {isWorkbookCopied ? "Copied!" : "Copy Workbook Content"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+const isValidLinkArray = (arr: unknown): arr is { title: string; url: string }[] => {
+  return (
+    Array.isArray(arr) &&
+    arr.every(
+      (item) =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof item.title === "string" &&
+        typeof item.url === "string"
+    )
+  );
+};
 
 export default App;
