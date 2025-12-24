@@ -10,21 +10,26 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [workbookContent, setWorkbookContent] = useState<string | null>(null);
 
+  // --- CHANGE 1: Add State for Failed Items ---
+  const [failedItems, setFailedItems] = useState<string[]>([]);
+
   // Button State toggles
   const [isAllCopied, setIsAllCopied] = useState(false);
   const [isWorkbookCopied, setIsWorkbookCopied] = useState(false);
 
   // LOAD DATA & START LISTENING
   useEffect(() => {
-    // 1. Initial Fetch (Get data if it's already there)
+    // 1. Initial Fetch
     chrome.storage.local.get(
-      ["sessionTitle", "links", "allUrls", "workbookContent"],
+      // --- CHANGE 2: Fetch 'failedItems' from storage ---
+      ["sessionTitle", "links", "allUrls", "workbookContent", "failedItems"],
       (result) => {
         const data = result as {
           sessionTitle?: string;
           links?: { title: string; url: string }[];
           allUrls?: string;
           workbookContent?: string;
+          failedItems?: string[];
         };
 
         if (data.sessionTitle) setSessionTitle(data.sessionTitle);
@@ -32,13 +37,15 @@ function App() {
         if (data.allUrls) setAllUrls(data.allUrls);
         if (data.workbookContent && data.workbookContent.length > 0)
           setWorkbookContent(data.workbookContent);
+        
+        // Load existing errors
+        if (data.failedItems) setFailedItems(data.failedItems);
       }
     );
 
-    // 2. LIVE LISTENER (Crucial Fix: Updates UI when data arrives)
+    // 2. LIVE LISTENER
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       
-      // Helper: reducing repetition for the 3 string fields
       const updateString = (key: string, setter: (val: string | null) => void) => {
         if (changes[key]) {
           const val = changes[key].newValue;
@@ -46,21 +53,24 @@ function App() {
         }
       };
 
-      // Apply updates
       updateString("workbookContent", setWorkbookContent);
       updateString("allUrls", setAllUrls);
       updateString("sessionTitle", setSessionTitle);
 
-      // Handle Links separately (using our clean type guard)
       if (changes.links) {
         const val = changes.links.newValue;
         setLinks(isValidLinkArray(val) ? val : []);
+      }
+
+      // --- CHANGE 3: Listen for new 'failedItems' updates ---
+      if (changes.failedItems) {
+        const val = changes.failedItems.newValue;
+        setFailedItems(Array.isArray(val) ? val : []);
       }
     };
 
     chrome.storage.onChanged.addListener(handleStorageChange);
 
-    // Cleanup
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
@@ -74,7 +84,6 @@ function App() {
       currentWindow: true,
     });
 
-    // 1. VALIDATION CHECK
     if (tab.url) {
       const isClassPage =
         /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(
@@ -105,11 +114,15 @@ function App() {
             setSessionTitle(newTitle);
             setLinks(newLinks);
             setAllUrls(newAllUrls);
+            
+            // --- CHANGE 4: Clear errors on new scrape ---
+            setFailedItems([]);
 
             chrome.storage.local.set({
               sessionTitle: newTitle,
               links: newLinks,
               allUrls: newAllUrls,
+              failedItems: [], // Reset storage too
             });
 
             if (newLinks.length === 0) {
@@ -132,6 +145,8 @@ function App() {
       setLinks([]);
       setErrorMessage(null);
       setWorkbookContent(null);
+      // --- CHANGE 5: Clear errors from state ---
+      setFailedItems([]);
     });
   };
 
@@ -210,7 +225,12 @@ function App() {
         </Button>
       </div>
 
-      <LinkList sessionTitle={sessionTitle} links={links} />
+      {/* --- CHANGE 6: Pass failedItems to the List --- */}
+      <LinkList 
+        sessionTitle={sessionTitle} 
+        links={links} 
+        failedItems={failedItems} 
+      />
 
       {/* RESULTS SECTION */}
       {allUrls && (

@@ -1,4 +1,3 @@
-
 interface Link {
   title: string;
   url: string;
@@ -7,6 +6,7 @@ interface Link {
 interface LinkListProps {
   sessionTitle: string | null;
   links: Link[];
+  failedItems: string[]; // <--- Ensure this is passed
 }
 
 // Material Design 3 Inspired Colors for Categories
@@ -57,9 +57,16 @@ function getCategory(url: string) {
   };
 }
 
-export function LinkList({ sessionTitle, links }: LinkListProps) {
+export function LinkList({ sessionTitle, links, failedItems = [] }: LinkListProps) {
 
   if (links.length === 0 && !sessionTitle) return null;
+
+  // Helper to check for errors
+  const isFailed = (link: Link) => {
+    return failedItems.some(item => 
+      item === link.url || item === link.title || link.url.includes(item)
+    );
+  };
 
   return (
     <div className="w-full flex flex-col gap-3 overflow-hidden font-sans">
@@ -81,6 +88,16 @@ export function LinkList({ sessionTitle, links }: LinkListProps) {
       <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
         {links.map((link, index) => {
           const category = getCategory(link.url);
+          const hasError = isFailed(link);
+
+          // Dynamic Styles based on Error State
+          const containerClasses = hasError
+            ? "bg-red-900/20 border-red-500/50 hover:bg-red-900/40" // Error Style
+            : "bg-[#2D2E30] hover:bg-[#353638] border-transparent hover:border-[#505153]"; // Normal Style
+
+          const badgeClasses = hasError 
+            ? "bg-red-500 text-white border-red-500" 
+            : category.color;
 
           return (
             <a
@@ -88,20 +105,18 @@ export function LinkList({ sessionTitle, links }: LinkListProps) {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              // FIX 1: Changed 'items-start' to 'items-center' to center the tag vertically
-              // FIX 2: Removed 'justify-center' so content aligns left properly
-              className="w-full text-left group flex items-center gap-3 p-3 bg-[#2D2E30] hover:bg-[#353638] rounded-2xl transition-all border border-transparent hover:border-[#505153] decoration-0"
-              title="Open in new tab"
+              className={`w-full text-left group flex items-center gap-3 p-3 rounded-2xl transition-all border decoration-0 ${containerClasses}`}
+              title={hasError ? "This source failed to upload" : link.url}
             >
               {/* Tag */}
               <span
-                className={`shrink-0 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${category.color}`}
+                className={`shrink-0 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${badgeClasses}`}
               >
                 {category.name}
               </span>
 
               {/* Title */}
-              <span className="text-sm text-[#E3E3E3] group-hover:text-white leading-snug line-clamp-2 font-normal">
+              <span className={`text-sm leading-snug line-clamp-2 font-normal ${hasError ? "text-red-200" : "text-[#E3E3E3] group-hover:text-white"}`}>
                 {link.title}
               </span>
             </a>

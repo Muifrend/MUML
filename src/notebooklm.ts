@@ -161,8 +161,34 @@ function injectNativeSyncChip() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
+function trackSourceErrors() {
+  console.log("Minerva: Starting Error Tracker...");
+
+  const observer = new MutationObserver(() => {
+    // 1. Find all error elements using your specific selector
+    const errorElements = document.querySelectorAll('.single-source-error-container .source-title');
+
+    if (errorElements.length > 0) {
+      // 2. Extract the text (URL or Title) from each error
+      const failedItems = Array.from(errorElements)
+        .map(el => (el as HTMLElement).innerText.trim())
+        .filter(text => text.length > 0);
+
+      // 3. Save to storage so the Popup can read it
+      // We use a specific key "failedItems"
+      chrome.storage.local.set({ failedItems }, () => {
+         // Optional: Log to console to confirm it's working
+         // console.log("Minerva: Detected failed sources:", failedItems);
+      });
+    }
+  });
+
+  // Watch the body for these error popups appearing
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // ==========================================
-// 4. INITIALIZATION
+// 4. INITIALIZATION (UPDATED)
 // ==========================================
 
 console.log("Minerva: Script Loaded");
@@ -171,5 +197,6 @@ chrome.storage.local.get(['links'], (result) => {
   const data = result as { links?: { title: string; url: string }[] };
   if (data.links && data.links.length > 0) {
     injectNativeSyncChip();
+    trackSourceErrors(); // <--- START THE TRACKER HERE
   }
 });
