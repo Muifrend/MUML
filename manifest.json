@@ -21,6 +21,13 @@
       ]
     },
     {
+    "js": ["src/content-scripts.ts"],
+    "matches": [
+      "https://sle-collaboration.minervaproject.com/*"
+    ],
+    "all_frames": true
+    },
+    {
       "matches": ["https://notebooklm.google.com/*"],
       "js": ["src/notebooklm.ts"]
     }
