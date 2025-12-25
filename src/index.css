@@ -1,11 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
-body {
-  font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased; /* Makes font look sharper on Chrome */
+
+html, body, #root {
+  height: fit-content !important;
+  min-height: 0 !important;
+  max-height: 600px; /* Optional: cap the max height so it scrolls */
+  margin: 0;
+  padding: 0;
+  width: 320px;
+  overflow: hidden; /* Hide scroll on body, let the App div handle it */
 }
 
-/* Hide scrollbars for a cleaner look */
+/* 2. Your specific font settings */
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #22262b; /* Match your app bg so no white flashes */
+}
+
+/* 3. Your Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
 }

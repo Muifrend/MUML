@@ -37,16 +37,20 @@ function App() {
         if (data.allUrls) setAllUrls(data.allUrls);
         if (data.workbookContent && data.workbookContent.length > 0)
           setWorkbookContent(data.workbookContent);
-        
+
         // Load existing errors
         if (data.failedItems) setFailedItems(data.failedItems);
       }
     );
 
     // 2. LIVE LISTENER
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      
-      const updateString = (key: string, setter: (val: string | null) => void) => {
+    const handleStorageChange = (changes: {
+      [key: string]: chrome.storage.StorageChange;
+    }) => {
+      const updateString = (
+        key: string,
+        setter: (val: string | null) => void
+      ) => {
         if (changes[key]) {
           const val = changes[key].newValue;
           setter(typeof val === "string" ? val : null);
@@ -76,14 +80,27 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000); // 5000ms = 5 seconds
+
+      // Cleanup the timer if the component unmounts or error changes
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
+
   const handleScrape = async () => {
-    setErrorMessage(null);
+    // 1. DELETE THIS LINE to prevent the flicker:
+    // setErrorMessage(null);
 
     const [tab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     });
 
+    // 2. VALIDATION CHECK
     if (tab.url) {
       const isClassPage =
         /^https:\/\/forum\.minerva\.edu\/app\/courses\/[^/]+\/sections\/[^/]+\/classes\/[^/]+/.test(
@@ -114,18 +131,21 @@ function App() {
             setSessionTitle(newTitle);
             setLinks(newLinks);
             setAllUrls(newAllUrls);
-            
-            // --- CHANGE 4: Clear errors on new scrape ---
+
             setFailedItems([]);
+
+            // 3. CLEAR ERROR HERE (Only on success)
+            setErrorMessage(null);
 
             chrome.storage.local.set({
               sessionTitle: newTitle,
               links: newLinks,
               allUrls: newAllUrls,
-              failedItems: [], // Reset storage too
+              failedItems: [],
             });
 
             if (newLinks.length === 0) {
+              // This is a "soft" error, so we set it here
               setErrorMessage("Found the session, but no readings.");
             }
           } else {
@@ -167,9 +187,12 @@ function App() {
   };
 
   return (
-    <div className="p-5 bg-[#22262b] w-[320px] max-h-[600px] text-[#E3E3E3] flex flex-col font-sans overflow-hidden">
+    // 1. Removed 'min-h' so it is small when empty.
+    // 2. 'h-fit' lets it grow as links are added.
+    // 3. 'justify-start' keeps the Header pinned to the top.
+    <div className="p-5 pb-2 bg-[#22262b] w-full h-fit max-h-[600px] text-[#E3E3E3] flex flex-col font-sans overflow-y-auto [scrollbar-gutter:stable]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 shrink-0">
         <h1 className="text-xl font-medium tracking-tight">MULM</h1>
 
         {/* Clear Button */}
@@ -199,8 +222,8 @@ function App() {
 
       <ErrorMessage message={errorMessage} />
 
-      {/* Main Action Button */}
-      <div className="w-full mb-4">
+      {/* Main Action Button - Wrapped in shrink-0 to prevent squashing */}
+      <div className="w-full mb-4 shrink-0">
         <Button
           onClick={handleScrape}
           icon={
@@ -225,115 +248,99 @@ function App() {
         </Button>
       </div>
 
-      {/* --- CHANGE 6: Pass failedItems to the List --- */}
-      <LinkList 
-        sessionTitle={sessionTitle} 
-        links={links} 
-        failedItems={failedItems} 
+      {/* The List - Grows downwards */}
+      <LinkList
+        sessionTitle={sessionTitle}
+        links={links}
+        failedItems={failedItems}
       />
 
-      {/* RESULTS SECTION */}
+      {/* Bottom Buttons */}
       {allUrls && (
-        <div className="mt-2 pt-2 border-t border-zinc-700">
-          <div className="w-full">
-            <Button
-              onClick={handleCopyAll}
-              variant={isAllCopied ? "success" : "primary"}
-              icon={
-                isAllCopied ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect
-                      x="9"
-                      y="9"
-                      width="13"
-                      height="13"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                )
-              }
-            >
-              {isAllCopied ? "Copied!" : "Copy Sources for NotebookLM"}
-            </Button>
-          </div>
-          {workbookContent && (
-            <div className="w-full mb-3 mt-2">
+        <div className="mt-4 pb-2 bg-[#22262b]">
+          <div className="flex flex-col gap-3">
+            <div className="w-full">
               <Button
-                onClick={handleCopyWorkbook}
-                variant={isWorkbookCopied ? "success" : "primary"}
-                icon={
-                  isWorkbookCopied ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" x2="8" y1="13" y2="13" />
-                      <line x1="16" x2="8" y1="17" y2="17" />
-                      <line x1="10" x2="8" y1="9" y2="9" />
-                    </svg>
-                  )
-                }
+                onClick={handleCopyAll}
+                variant={isAllCopied ? "success" : "primary"}
+                icon={isAllCopied ? <CheckIcon /> : <CopyIcon />}
               >
-                {isWorkbookCopied ? "Copied!" : "Copy Workbook Content"}
+                {isAllCopied ? "Copied!" : "Copy Sources for NotebookLM"}
               </Button>
             </div>
-          )}
+
+            {workbookContent && (
+              <div className="w-full">
+                <Button
+                  onClick={handleCopyWorkbook}
+                  variant={isWorkbookCopied ? "success" : "primary"}
+                  icon={isWorkbookCopied ? <CheckIcon /> : <BookIcon />}
+                >
+                  {isWorkbookCopied ? "Copied!" : "Copy Workbook Content"}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
+// Simple Icon Components to keep the code above clean
+const CheckIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+const CopyIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+);
+const BookIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" x2="8" y1="13" y2="13" />
+    <line x1="16" x2="8" y1="17" y2="17" />
+    <line x1="10" x2="8" y1="9" y2="9" />
+  </svg>
+);
 
-const isValidLinkArray = (arr: unknown): arr is { title: string; url: string }[] => {
+const isValidLinkArray = (
+  arr: unknown
+): arr is { title: string; url: string }[] => {
   return (
     Array.isArray(arr) &&
     arr.every(
