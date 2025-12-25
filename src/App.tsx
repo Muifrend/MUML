@@ -170,7 +170,7 @@ function App() {
     <div className="p-5 bg-[#22262b] w-[320px] max-h-[600px] text-[#E3E3E3] flex flex-col font-sans overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-medium tracking-tight">MinervaLM</h1>
+        <h1 className="text-xl font-medium tracking-tight">MULM</h1>
 
         {/* Clear Button */}
         {(links.length > 0 || sessionTitle) && (
