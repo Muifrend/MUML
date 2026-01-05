@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MULM",
-  "description": "A Google NotebookLM companion for ambitious students.",
+  "description": "Streamlining the NotebookLM workflow for students using the Minerva Forum platform.",
   "version": "1.0.0",
   "icons": {
     "16": "images/icon16.png",
@@ -12,20 +12,16 @@
   "action": {
     "default_popup": "popup.html"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab"],
   "content_scripts": [
     {
       "js": ["src/content-scripts.ts"],
-      "matches": [
-        "https://forum.minerva.edu/*"
-      ]
+      "matches": ["https://forum.minerva.edu/*"]
     },
     {
-    "js": ["src/content-scripts.ts"],
-    "matches": [
-      "https://sle-collaboration.minervaproject.com/*"
-    ],
-    "all_frames": true
+      "js": ["src/content-scripts.ts"],
+      "matches": ["https://sle-collaboration.minervaproject.com/*"],
+      "all_frames": true
     },
     {
       "matches": ["https://notebooklm.google.com/*"],
